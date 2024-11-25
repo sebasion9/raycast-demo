@@ -71,9 +71,10 @@ class Render {
             }
             // adjust brightness of line and draw
             let x = lines[i].x;
-            let r = 80 * 1/(lines[i].dist);
-            let g = 80 * 1/(lines[i].dist);
-            let b = 80 * 1/(lines[i].dist);
+            let dist = lines[i].dist;
+            let r = 200 * 1/(dist);
+            let g = 200 * 1/(dist);
+            let b = 200 * 1/(dist);
             this.ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
             this.ctx.fillRect(x, 0, 5, WIN_HEIGHT);
         }
@@ -267,10 +268,10 @@ class Game {
                     this.player.pos.y += MAP_FACTOR/4;
                 }
                 if(angle > 45 && angle < 135) {
-                    this.player.pos.x -= MAP_FACTOR/4
+                    this.player.pos.x += MAP_FACTOR/4
                 }
                 if(angle > 225 && angle < 315) {
-                    this.player.pos.x += MAP_FACTOR/4;
+                    this.player.pos.x -= MAP_FACTOR/4;
                 }
                 break;
             case "d":
@@ -281,10 +282,10 @@ class Game {
                     this.player.pos.y -= MAP_FACTOR/4;
                 }
                 if(angle > 45 && angle < 135) {
-                    this.player.pos.x += MAP_FACTOR/4
+                    this.player.pos.x -= MAP_FACTOR/4
                 }
                 if(angle > 225 && angle < 315) {
-                    this.player.pos.x -= MAP_FACTOR/4;
+                    this.player.pos.x += MAP_FACTOR/4;
                 }
                 break;
         }

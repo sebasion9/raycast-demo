@@ -6,7 +6,7 @@ This is a demo showcasing simple raycast in a browser.
 - For building, `typescript`
 - For running, `live-server` is recommended.
 
-Both can be installed via [npm]() : 
+Both can be installed via `npm` : 
 `npm install -g live-server typescript`
 
 
