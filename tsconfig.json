@@ -4,6 +4,7 @@
     "module": "es6",
     "rootDir": "./",
     "outDir": "./target",
+    //"outFile": "./target/index.js",
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
     "strict": true,

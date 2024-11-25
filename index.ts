@@ -1,51 +1,20 @@
-const WIN_HEIGHT = window.innerHeight;
-const WIN_WIDTH = window.innerWidth;
+import {
+    WIN_HEIGHT, WIN_WIDTH, MAP_FACTOR, VIRT_MAP_LEN,
+    Context, Line,
+    BLACK, CYAN,
+} from "./config.js";
 
-// virt map to "physical" map factor
-const MAP_FACTOR = 1000;
-const VIRT_MAP_LEN = 7;
-
-const BLACK = "rgb(0, 0, 0)";
-const WHITE = "rgb(255, 255, 255)";
-const CYAN = "rgb(0, 120, 120)";
-const GRAYISH = "rgb(140, 140, 140)";
-const REDISH = "rgb(140, 0, 0)";
+import { Minimap, pt } from "./util.js";
+import { Player } from "./player.js";
+import { input } from "./input.js";
 
 
-type Context = CanvasRenderingContext2D;
-type Line = {
-    x : number,
-    dist : number
-};
-
-const canvas : HTMLCanvasElement = document.getElementById("canv") as HTMLCanvasElement;
-canvas.width = WIN_WIDTH;
-canvas.height = WIN_HEIGHT;
-
-let ctx : Context = canvas.getContext("2d") as Context;
-
-
-// fps stuff
+// fps stuff, (i am enthusiast of anti-patterns)
 var frame_count = 0;
 var seconds_passed = 0;
 var old_ts = 0;
-var ts;
 var fps;
 
-
-// wrapper for cleaner point constructor
-function pt(x:number, y:number) : Point {
-    return new Point(x,y);
-};
-
-class Point {
-    x : number;
-    y : number;
-    constructor(x : number, y : number) {
-        this.x = x;
-        this.y = y;
-    }
-};
 
 class Render {
     private ctx : Context;
@@ -98,10 +67,9 @@ class Game {
     private lines : Line[];
     private render : Render;
     private player : Player;
+    private input_handler : (e : KeyboardEvent, player : Player) => void;
 
     constructor(ctx : Context) {
-        // put player at middle
-        this.player = new Player(pt(3 * MAP_FACTOR + MAP_FACTOR/2,3 * MAP_FACTOR + MAP_FACTOR/2));
         // for demo purposes, the map is square now and static
         this.virtual_map = [
             [1,1,1,1,1,1,1],
@@ -112,18 +80,22 @@ class Game {
             [1,0,0,0,0,0,1],
             [1,1,1,1,1,1,1],
         ];
-
+        // put player at middle
+        this.player = new Player(pt(
+            (Math.floor(VIRT_MAP_LEN - 1)/2) * MAP_FACTOR + MAP_FACTOR/2,
+            (Math.floor(VIRT_MAP_LEN - 1)/2) * MAP_FACTOR + MAP_FACTOR/2)
+        );
 
         this.physical_map = this.virt_to_phys_map();
         // init lines[] with empty arr
         this.lines = [...Array(WIN_WIDTH)];
-
-        let mini = new Minimap(this.player.pos, this.virtual_map);
-
-        this.render = new Render(ctx, mini);
+        this.render = new Render(
+            ctx, new Minimap(this.player.pos, this.virtual_map)
+        );
+        this.input_handler = input;
 
         // user input listener
-        document.addEventListener("keydown", (e) => this.input(e));
+        document.addEventListener("keydown", (e) => this.input_handler(e, this.player));
 
     };
     ray() : void {
@@ -222,153 +194,18 @@ class Game {
         // next frame
         window.requestAnimationFrame(() => this.loop());
     }
-    // simple walking/turning player interface
-    input(e : KeyboardEvent) : void {
-        let angle = this.player.get_angle();
-        switch(e.key) {
-            case "q":
-                this.player.camera_angle -= 5;
-                break;
-            case "e":
-                this.player.camera_angle += 5;
-                break;
-            case "w":
-                if(angle <= 45 && angle >= 0 || angle >= 315 && angle <= 360) {
-                    this.player.pos.x += MAP_FACTOR/4;
-                }
-                if(angle <= 225 && angle >= 135) {
-                    this.player.pos.x -= MAP_FACTOR/4;
-                }
-                if(angle > 45 && angle < 135) {
-                    this.player.pos.y += MAP_FACTOR/4
-                }
-                if(angle > 225 && angle < 315) {
-                    this.player.pos.y -= MAP_FACTOR/4;
-                }
-                break;
-            case "s":
-                if(angle <= 45 && angle >= 0 || angle >= 315 && angle <= 360) {
-                    this.player.pos.x -= MAP_FACTOR/4;
-                }
-                if(angle <= 225 && angle >= 135) {
-                    this.player.pos.x += MAP_FACTOR/4;
-                }
-                if(angle > 45 && angle < 135) {
-                    this.player.pos.y -= MAP_FACTOR/4
-                }
-                if(angle > 225 && angle < 315) {
-                    this.player.pos.y += MAP_FACTOR/4;
-                }
-                break;
-            case "a":
-                if(angle <= 45 && angle >= 0 || angle >= 315 && angle <= 360) {
-                    this.player.pos.y -= MAP_FACTOR/4;
-                }
-                if(angle <= 225 && angle >= 135) {
-                    this.player.pos.y += MAP_FACTOR/4;
-                }
-                if(angle > 45 && angle < 135) {
-                    this.player.pos.x += MAP_FACTOR/4
-                }
-                if(angle > 225 && angle < 315) {
-                    this.player.pos.x -= MAP_FACTOR/4;
-                }
-                break;
-            case "d":
-                if(angle <= 45 && angle >= 0 || angle >= 315 && angle <= 360) {
-                    this.player.pos.y += MAP_FACTOR/4;
-                }
-                if(angle <= 225 && angle >= 135) {
-                    this.player.pos.y -= MAP_FACTOR/4;
-                }
-                if(angle > 45 && angle < 135) {
-                    this.player.pos.x -= MAP_FACTOR/4
-                }
-                if(angle > 225 && angle < 315) {
-                    this.player.pos.x += MAP_FACTOR/4;
-                }
-                break;
-        }
-
-    }
-
 };
-class Player {
-    pos : Point;
-    camera_angle : number = 0;
-    fov : number = 120;
-    constructor(virtXY : Point) {
-        this.pos = virtXY;
-    };
-    // returns positive angle
-    get_angle() : number {
-        let angle = this.camera_angle;
-        while(angle < 0) {
-            angle += 360;
-        }
-        while(angle > 360) {
-            angle -= 360;
-        }
-        return angle;
-    }
+
+const init_canv = () => {
+    let canvas : HTMLCanvasElement = document.getElementById("canv") as HTMLCanvasElement;
+    canvas.width = WIN_WIDTH;
+    canvas.height = WIN_HEIGHT;
+    return canvas;
 }
-
-// is always square
-class Minimap {
-    draw_pos : Point;
-    private ppos : Point;
-    private vmap : number[][];
-    // size in px
-    size : number;
-    // some static position and size
-    constructor(ppos : Point, vmap : number[][]) {
-        this.draw_pos = pt(25, 25);
-        this.size = 150;
-        this.ppos= ppos;
-        this.vmap = vmap;
-    }
-
-    draw(ctx : Context) : void {
-        // draw backgroud of map with border
-        let x = this.draw_pos.x;
-        let y = this.draw_pos.y;
-        // border
-        ctx.fillStyle = GRAYISH;
-        ctx.fillRect(x-5,y-5, this.size+10,this.size+10);
-        // bg
-        ctx.fillStyle = BLACK;
-        ctx.fillRect(x,y,this.size,this.size);
-
-        // only support square maps for now
-        let height = this.size / this.vmap.length;
-        let width = this.size / this.vmap[0].length;
-        // map player back to virt map
-        let px = Math.round((this.ppos.x - MAP_FACTOR/2) / MAP_FACTOR);
-        let py = Math.round((this.ppos.y - MAP_FACTOR/2) / MAP_FACTOR);
-
-        for(let i = 0; i < this.vmap.length; i++) {
-            for(let j = 0; j < this.vmap[0].length; j++) {
-                // draw player "dot"
-                if(i === py && j == px) {
-                    ctx.fillStyle = REDISH;
-                    ctx.fillRect(x+j*width, y+i*height, width, height);
-                    continue;
-                }
-
-                // draw wall
-                if(this.vmap[i][j] === 1) {
-                    ctx.fillStyle = WHITE;
-                    ctx.fillRect(x+j*width, y+i*height, width, height);
-                }
-            }
-        }
-
-    }
-}
-
-
 
 function main() {
+    let canvas = init_canv();
+    let ctx : Context = canvas.getContext("2d") as Context;
     let game = new Game(ctx);
     game.loop();
 };
